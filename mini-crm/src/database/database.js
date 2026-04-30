@@ -1,6 +1,10 @@
 const sqlite3 = require('sqlite3').verbose();
 
-const db = new sqlite3.Database('./mini_crm.db', (error) => {
+const path = require('path');
+
+const dbPath = path.join(__dirname, '../../mini_crm.db');
+
+const db = new sqlite3.Database(dbPath, (error) => {
   if (error) {
     console.error('Erro ao conectar ao banco:', error.message);
     return;
