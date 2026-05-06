@@ -11,7 +11,8 @@ module.exports = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, 'segredo_super_secreto');
-    req.user = decoded;
+    req.userId = decoded.id;
+    req.userEmail = decoded.email;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Token inválido.' });

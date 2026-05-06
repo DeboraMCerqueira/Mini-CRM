@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>EATO CRM - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="dashboard">
+    <aside class="sidebar">
+      <img src="assets/logo.jpeg" class="sidebar-logo">
+
+      <nav>
+        <a class="active" onclick="irDashboard()">Dashboard</a>
+        <a onclick="window.location.href='clientes.html'">Clientes</a>
+        <a onclick="window.location.href='relatorios.html'">Relatórios</a>
+      </nav>
+
+      <button onclick="logout()" class="logout-btn">Sair</button>
+    </aside>
+
+    <main class="main-content">
+      <h1>Dashboard</h1>
+      <p id="welcomeMessage">Visão geral do seu CRM</p>
+
+      <section class="cards">
+        <div class="info-card">
+          <span>Clientes</span>
+          <strong id="totalClientes">0</strong>
+        </div>
+
+        <div class="info-card">
+          <span>Status</span>
+          <strong>Online</strong>
+        </div>
+      </section>
+
+      <section class="table-card">
+        <h2>Clientes Recentes</h2>
+        <div id="clientesLista">Carregando clientes...</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

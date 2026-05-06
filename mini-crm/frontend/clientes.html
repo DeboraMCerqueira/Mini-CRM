@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>EATO CRM - Clientes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="dashboard">
+
+    <aside class="sidebar">
+      <img src="assets/logo.jpeg" class="sidebar-logo">
+
+      <nav>
+        <a onclick="irDashboard()">Dashboard</a>
+        <a class="active" onclick="window.location.href='clientes.html'">Clientes</a>
+        <a onclick="window.location.href='relatorios.html'">Relatórios</a>
+      </nav>
+
+      <button onclick="logout()" class="logout-btn">Sair</button>
+    </aside>
+
+    <main class="main-content">
+      <h1>Clientes</h1>
+      <p>Gerencie seus clientes</p>
+
+      <div class="table-card">
+        <h2>Lista de Clientes</h2>
+        <div id="clientesLista">Carregando clientes...</div>
+      </div>
+
+      <div class="form-card">
+  <h2>Novo Cliente</h2>
+
+  <form id="clienteForm">
+    <input type="text" id="name" placeholder="Nome" required>
+    <input type="email" id="email" placeholder="Email">
+    <input type="text" id="phone" placeholder="Telefone">
+    <input type="text" id="company" placeholder="Empresa">
+
+    <select id="status">
+      <option value="lead">Lead</option>
+      <option value="negociacao">Negociação</option>
+      <option value="fechado">Fechado</option>
+    </select>
+
+    <label class="checkbox">
+      <input type="checkbox" id="is_public">
+      Cliente público
+    </label>
+
+    <button type="submit">Salvar Cliente</button>
+  </form>
+</div>
+
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

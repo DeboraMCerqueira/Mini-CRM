@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>EATO CRM - Relatórios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="dashboard">
+    <aside class="sidebar">
+      <img src="assets/logo.jpeg" class="sidebar-logo">
+
+      <nav>
+        <a onclick="window.location.href='dashboard.html'">Dashboard</a>
+        <a onclick="window.location.href='clientes.html'">Clientes</a>
+        <a class="active" onclick="window.location.href='relatorios.html'">Relatórios</a>
+      </nav>
+
+      <button onclick="logout()" class="logout-btn">Sair</button>
+    </aside>
+
+    <main class="main-content">
+      <h1>Relatórios</h1>
+      <p>Resumo geral do desempenho do CRM</p>
+
+      <section class="cards">
+        <div class="info-card">
+          <span>Total de clientes</span>
+          <strong id="relatorioTotalClientes">0</strong>
+        </div>
+
+        <div class="info-card">
+          <span>Status do sistema</span>
+          <strong>Online</strong>
+        </div>
+
+        <div class="info-card">
+        <span>Clientes públicos</span>
+        <strong id="relatorioPublicos">0</strong>
+        </div>
+
+        <div class="info-card">
+        <span>Clientes privados</span>
+        <strong id="relatorioPrivados">0</strong>
+        </div>
+        <div class="info-card">
+        <span>Leads</span>
+        <strong id="relatorioLeads">0</strong>
+        </div>
+
+        <div class="info-card">
+        <span>Negociação</span>
+        <strong id="relatorioNegociacao">0</strong>
+        </div>
+
+        <div class="info-card">
+        <span>Fechados</span>
+        <strong id="relatorioFechados">0</strong>
+        </div>
+
+        <div class="info-card">
+        <span>Perdidos</span>
+        <strong id="relatorioPerdidos">0</strong>
+      </div>
+
+      
+
+
+      </section>
+
+      <section class="table-card">
+        <h2>Resumo</h2>
+        <div class="resumo-relatorio">
+        <p id="resumoTexto">Carregando resumo...</p>
+        </div>
+
+        <div class="grafico-area">
+        <canvas id="graficoStatus"></canvas>
+        </div>
+        
+      </section>
+
+        <div class="export-area">
+          <label>Escolha os clientes para exportar:</label>
+
+          <select id="clienteExportSelect" multiple>
+            <option value="todos">Todos os clientes</option>
+          </select>
+
+          <button onclick="exportarExcel()" class="export-btn">
+            Exportar Excel
+          </button>
+        </div>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

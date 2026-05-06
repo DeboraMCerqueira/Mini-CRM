@@ -76,10 +76,15 @@ router.post('/login', (req, res) => {
         { expiresIn: '1d' }
       );
 
-      return res.json({
-        message: 'Login realizado com sucesso',
-        token
-      });
+     return res.json({
+  message: 'Login realizado com sucesso',
+  token,
+  user: {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  }
+});
     }
   );
 });
