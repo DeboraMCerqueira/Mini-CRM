@@ -531,21 +531,24 @@ async function salvarInteracao(id) {
     alert("Erro ao conectar com servidor.");
   }
 }
+  function formatarData(dataBanco) {
+    if (!dataBanco) return "Sem contato";
 
-function formatarData(dataSQLite) {
-  if (!dataSQLite) return "Sem data";
+    const data = new Date(dataBanco);
 
-  const data = new Date(dataSQLite.replace(" ", "T") + "Z");
+    if (isNaN(data.getTime())) {
+      return "Sem contato";
+    }
 
-  return data.toLocaleString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
+    return data.toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
 
 async function exportarExcel() {
   const token = localStorage.getItem("token");

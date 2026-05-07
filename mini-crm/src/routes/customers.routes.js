@@ -4,97 +4,95 @@ const authMiddleware = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
-// 🔒 Todas as rotas abaixo exigem login
 router.use(authMiddleware);
 
 // Criar cliente
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', async (req, res) => {
   const userId = req.userId;
-
-  const { name, email, phone, company, notes, status, is_public } = req.body;
+  const { name, email, phone, company, status, is_public } = req.body;
 
   if (!name) {
     return res.status(400).json({ message: 'Nome do cliente é obrigatório.' });
   }
 
-  db.run(
-    `
-    INSERT INTO customers 
-    (name, email, phone, company, status, is_public, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      name,
-      email || '',
-      phone || '',
-      company || '',
-      status || 'lead',
-      is_public ? 1 : 0,
-      userId
-    ],
-    function (error) {
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao cadastrar cliente.',
-          error: error.message
-        });
-      }
+  try {
+    const result = await db.query(
+      `
+      INSERT INTO customers 
+      (name, email, phone, company, status, is_public, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
+      `,
+      [
+        name,
+        email || '',
+        phone || '',
+        company || '',
+        status || 'lead',
+        is_public ? 1 : 0,
+        userId
+      ]
+    );
 
-      return res.status(201).json({
-        message: 'Cliente cadastrado com sucesso.',
-        customerId: this.lastID
-      });
-    }
-  );
+    return res.status(201).json({
+      message: 'Cliente cadastrado com sucesso.',
+      customerId: result.rows[0].id
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao cadastrar cliente.',
+      error: error.message
+    });
+  }
 });
 
 // Listar clientes
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', async (req, res) => {
   const userId = req.userId;
 
-  db.all(
-    `
-    SELECT 
-      customers.*,
-      last_interaction.created_at AS last_contact_date,
-      users.name AS last_contact_user
-    FROM customers
-
-    LEFT JOIN (
+  try {
+    const result = await db.query(
+      `
       SELECT 
-        customer_id,
-        user_id,
-        MAX(created_at) AS created_at
-      FROM interactions
-      GROUP BY customer_id
-    ) AS last_interaction
-    ON last_interaction.customer_id = customers.id
+        customers.*,
+        last_interaction.created_at AS last_contact_date,
+        users.name AS last_contact_user
+      FROM customers
 
-    LEFT JOIN users
-    ON users.id = last_interaction.user_id
+      LEFT JOIN (
+        SELECT DISTINCT ON (customer_id)
+          customer_id,
+          user_id,
+          created_at
+        FROM interactions
+        ORDER BY customer_id, created_at DESC
+      ) AS last_interaction
+      ON last_interaction.customer_id = customers.id
 
-    WHERE customers.user_id = ?
-    OR customers.is_public = 1
+      LEFT JOIN users
+      ON users.id = last_interaction.user_id
 
-    ORDER BY customers.created_at DESC
-    `,
-    [userId],
-    (error, rows) => {
+      WHERE customers.user_id = $1
+      OR customers.is_public = 1
 
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao buscar clientes.',
-          error: error.message
-        });
-      }
+      ORDER BY customers.created_at DESC
+      `,
+      [userId]
+    );
 
-      res.json(rows);
-    }
-  );
+    res.json(result.rows);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao buscar clientes.',
+      error: error.message
+    });
+  }
 });
 
-
-router.post('/:id/interactions', authMiddleware, (req, res) => {
+// Criar interação
+router.post('/:id/interactions', async (req, res) => {
   const customerId = req.params.id;
   const userId = req.userId;
   const { note } = req.body;
@@ -105,53 +103,55 @@ router.post('/:id/interactions', authMiddleware, (req, res) => {
     });
   }
 
-  db.run(
-    `
-    INSERT INTO interactions (customer_id, user_id, note)
-    VALUES (?, ?, ?)
-    `,
-    [customerId, userId, note],
-    function (error) {
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao salvar interação.',
-          error: error.message
-        });
-      }
+  try {
+    await db.query(
+      `
+      INSERT INTO interactions (customer_id, user_id, note)
+      VALUES ($1, $2, $3)
+      `,
+      [customerId, userId, note]
+    );
 
-      res.status(201).json({
-        message: 'Interação registrada com sucesso.'
-      });
-    }
-  );
+    res.status(201).json({
+      message: 'Interação registrada com sucesso.'
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao salvar interação.',
+      error: error.message
+    });
+  }
 });
 
-router.get('/:id/interactions', authMiddleware, (req, res) => {
+// Listar interações
+router.get('/:id/interactions', async (req, res) => {
   const customerId = req.params.id;
 
-  db.all(
-    `
-    SELECT interactions.*, users.name AS user_name
-    FROM interactions
-    LEFT JOIN users ON users.id = interactions.user_id
-    WHERE interactions.customer_id = ?
-    ORDER BY interactions.created_at DESC
-    `,
-    [customerId],
-    (error, rows) => {
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao buscar interações.',
-          error: error.message
-        });
-      }
+  try {
+    const result = await db.query(
+      `
+      SELECT interactions.*, users.name AS user_name
+      FROM interactions
+      LEFT JOIN users ON users.id = interactions.user_id
+      WHERE interactions.customer_id = $1
+      ORDER BY interactions.created_at DESC
+      `,
+      [customerId]
+    );
 
-      res.json(rows);
-    }
-  );
+    res.json(result.rows);
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao buscar interações.',
+      error: error.message
+    });
+  }
 });
 
-router.put('/:id', authMiddleware, (req, res) => {
+// Atualizar cliente
+router.put('/:id', async (req, res) => {
   const customerId = req.params.id;
   const userId = req.userId;
 
@@ -164,113 +164,106 @@ router.put('/:id', authMiddleware, (req, res) => {
     is_public
   } = req.body;
 
-  // Primeiro busca o cliente
-  db.get(
-    `SELECT * FROM customers WHERE id = ?`,
-    [customerId],
-    (error, customer) => {
+  try {
+    const customerResult = await db.query(
+      `SELECT * FROM customers WHERE id = $1`,
+      [customerId]
+    );
 
-      if (error || !customer) {
-        return res.status(404).json({
-          message: 'Cliente não encontrado.'
-        });
-      }
+    const customer = customerResult.rows[0];
 
-      // Regra:
-      // privado -> só dono
-      // público -> equipe pode editar
-
-      if (
-        customer.is_public !== 1 &&
-        customer.user_id !== userId
-      ) {
-        return res.status(403).json({
-          message: 'Você não tem permissão para editar este cliente.'
-        });
-      }
-
-      db.run(
-        `
-        UPDATE customers
-        SET
-          name = ?,
-          email = ?,
-          phone = ?,
-          company = ?,
-          status = ?,
-          is_public = ?
-        WHERE id = ?
-        `,
-        [
-          name,
-          email || '',
-          phone || '',
-          company || '',
-          status || 'lead',
-          is_public ? 1 : 0,
-          customerId
-        ],
-        function (error) {
-
-          if (error) {
-            return res.status(500).json({
-              message: 'Erro ao atualizar cliente.',
-              error: error.message
-            });
-          }
-
-          // salva histórico automático
-          db.run(
-            `
-            INSERT INTO interactions
-            (customer_id, user_id, note)
-            VALUES (?, ?, ?)
-            `,
-            [
-              customerId,
-              userId,
-              `Cliente atualizado (${status})`
-            ]
-          );
-
-          res.json({
-            message: 'Cliente atualizado com sucesso.'
-          });
-        }
-      );
+    if (!customer) {
+      return res.status(404).json({
+        message: 'Cliente não encontrado.'
+      });
     }
-  );
+
+    if (customer.is_public !== 1 && customer.user_id !== userId) {
+      return res.status(403).json({
+        message: 'Você não tem permissão para editar este cliente.'
+      });
+    }
+
+    await db.query(
+      `
+      UPDATE customers
+      SET
+        name = $1,
+        email = $2,
+        phone = $3,
+        company = $4,
+        status = $5,
+        is_public = $6
+      WHERE id = $7
+      `,
+      [
+        name,
+        email || '',
+        phone || '',
+        company || '',
+        status || 'lead',
+        is_public ? 1 : 0,
+        customerId
+      ]
+    );
+
+    await db.query(
+      `
+      INSERT INTO interactions
+      (customer_id, user_id, note)
+      VALUES ($1, $2, $3)
+      `,
+      [
+        customerId,
+        userId,
+        `Cliente atualizado (${status || 'lead'})`
+      ]
+    );
+
+    res.json({
+      message: 'Cliente atualizado com sucesso.'
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao atualizar cliente.',
+      error: error.message
+    });
+  }
 });
-router.delete('/:id', authMiddleware, (req, res) => {
+
+// Excluir cliente
+router.delete('/:id', async (req, res) => {
   const customerId = req.params.id;
   const userId = req.userId;
 
-  db.run(
-    `
-    DELETE FROM customers
-    WHERE id = ?
-    AND user_id = ?
-    `,
-    [customerId, userId],
-    function (error) {
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao excluir cliente.',
-          error: error.message
-        });
-      }
+  try {
+    const result = await db.query(
+      `
+      DELETE FROM customers
+      WHERE id = $1
+      AND user_id = $2
+      RETURNING id
+      `,
+      [customerId, userId]
+    );
 
-      if (this.changes === 0) {
-        return res.status(403).json({
-          message: 'Você não tem permissão para excluir este cliente.'
-        });
-      }
-
-      res.json({
-        message: 'Cliente excluído com sucesso.'
+    if (result.rows.length === 0) {
+      return res.status(403).json({
+        message: 'Você não tem permissão para excluir este cliente.'
       });
     }
-  );
+
+    res.json({
+      message: 'Cliente excluído com sucesso.'
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Erro ao excluir cliente.',
+      error: error.message
+    });
+  }
 });
 
 module.exports = router;
