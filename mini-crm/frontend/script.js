@@ -1,4 +1,5 @@
 const API_URL = "http://localhost:3000";
+let clientesCache = [];
 
 const loginForm = document.getElementById("loginForm");
 
@@ -39,6 +40,50 @@ if (loginForm) {
   });
 }
 
+function renderizarClientes(clientes) {
+  const clientesLista = document.getElementById("clientesLista");
+
+  if (!clientesLista) return;
+
+  if (clientes.length === 0) {
+    clientesLista.innerHTML = `
+      <div class="empty-state">
+        <h3>Nenhum cliente encontrado</h3>
+        <p>Não há clientes para exibir no momento.</p>
+      </div>
+    `;
+    return;
+  }
+
+  clientesLista.innerHTML = clientes.map(cliente => `
+    <div class="cliente-card">
+
+      <div class="cliente-info">
+        <strong>${cliente.name}</strong>
+        <span>${cliente.email || '-'}</span>
+
+        <span class="status-badge status-${cliente.status}">
+          ${cliente.status}
+        </span>
+
+        <span class="visibilidade-badge ${cliente.is_public ? 'publico' : 'privado'}">
+          ${cliente.is_public ? '🌍 Público' : '🔒 Privado'}
+        </span>
+      </div>
+
+      <div class="cliente-actions">
+        <button onclick='abrirEdicao(${JSON.stringify(cliente)})'>Editar</button>
+        <button onclick="excluirCliente(${cliente.id})">Excluir</button>
+        <button onclick="abrirHistorico(${cliente.id})">Histórico</button>
+      </div>
+
+      <div id="historico-${cliente.id}" class="historico-box"></div>
+      <div id="edicao-${cliente.id}" class="edicao-box"></div>
+
+    </div>
+  `).join("");
+}
+
 async function carregarClientes() {
   const token = localStorage.getItem("token");
 
@@ -57,59 +102,25 @@ async function carregarClientes() {
 
     const clientes = await response.json();
 
-    const selectExport = document.getElementById("clienteExportSelect");
-
-    if (selectExport) {
-    selectExport.innerHTML = `
-    <option value="todos">Todos os clientes</option>
-    ${clientes.map(cliente => `
-      <option value="${cliente.id}">${cliente.name}</option>
-    `).join("")}
-  `;
-}
-
     const totalClientes = document.getElementById("totalClientes");
-    const clientesLista = document.getElementById("clientesLista");
 
-    totalClientes.textContent = clientes.length;
+    if (totalClientes) {
+      totalClientes.textContent = clientes.length;
+    }
 
-    if (clientes.length === 0) {
-  clientesLista.innerHTML = `
-    <div class="empty-state">
-      <h3>Nenhum cliente cadastrado ainda</h3>
-      <p>Comece adicionando seu primeiro cliente ao CRM.</p>
-      <button onclick="mostrarFormularioCliente()">Cadastrar cliente</button>
-    </div>
-  `;
-  return;
-}
-    clientesLista.innerHTML = clientes.map(cliente => `
-  <div class="cliente-card">
-    
-    <div class="cliente-info">
-      <strong>${cliente.name}</strong>
-      <span>${cliente.email || '-'}</span>
-      <span class="status-badge status-${cliente.status}">
-      ${cliente.status}
-      </span>
-      <span class="visibilidade-badge ${cliente.is_public ? 'publico' : 'privado'}">
-      ${cliente.is_public ? '🌍 Público' : '🔒 Privado'}
-      </span>
-    </div>
+    clientesCache = clientes;
 
-    <div class="cliente-actions">
-      <button onclick="editarCliente(${cliente.id})">Editar</button>
-      <button onclick="excluirCliente(${cliente.id})">Excluir</button>
-      <button onclick="abrirHistorico(${cliente.id})">Histórico</button>
-    </div>
-    <div id="historico-${cliente.id}" class="historico-box"></div>
-
-  </div>
-`).join("");
+    renderizarClientes(clientes);
+    configurarBuscaClientes();
 
   } catch (error) {
     console.error(error);
-    document.getElementById("clientesLista").innerHTML = "Erro ao carregar clientes.";
+
+    const clientesLista = document.getElementById("clientesLista");
+
+    if (clientesLista) {
+      clientesLista.innerHTML = "Erro ao carregar clientes.";
+    }
   }
 }
 
@@ -120,6 +131,7 @@ function logout() {
 
 if (window.location.pathname.includes("dashboard.html")) {
   carregarClientes();
+  carregarDashboardInteligente();
 }
 
 function protegerDashboard() {
@@ -449,13 +461,27 @@ async function abrirHistorico(id) {
     if (historico.length === 0) {
       html += `<p>Nenhuma interação ainda.</p>`;
     } else {
-      html += historico.map(item => `
-        <div class="historico-item">
-          <strong>${item.user_name}</strong>
-          <span>${formatarData(item.created_at)}</span>
+          html += historico.map(item => `
+      <div class="timeline-item">
+
+        <div class="timeline-dot"></div>
+
+        <div class="timeline-content">
+
+          <div class="timeline-header">
+            <strong>${item.user_name}</strong>
+
+            <span>
+              ${formatarData(item.created_at)}
+            </span>
+          </div>
+
           <p>${item.note}</p>
+
         </div>
-      `).join("");
+
+      </div>
+    `).join("");
     }
 
     html += `
@@ -655,4 +681,394 @@ function criarGraficoStatus(leads, negociacao, fechados, perdidos) {
       }
     }
   });
+}
+
+function abrirEdicao(cliente) {
+  const box = document.getElementById(`edicao-${cliente.id}`);
+
+  if (box.innerHTML !== "") {
+    box.innerHTML = "";
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="edicao-conteudo">
+
+      <h3>Editar Cliente</h3>
+
+      <input id="edit-name-${cliente.id}" 
+        value="${cliente.name || ""}" 
+        placeholder="Nome">
+
+      <input id="edit-email-${cliente.id}" 
+        value="${cliente.email || ""}" 
+        placeholder="Email">
+
+      <input id="edit-phone-${cliente.id}" 
+        value="${cliente.phone || ""}" 
+        placeholder="Telefone">
+
+      <input id="edit-company-${cliente.id}" 
+        value="${cliente.company || ""}" 
+        placeholder="Empresa">
+
+      <select id="edit-status-${cliente.id}">
+        <option value="lead" ${cliente.status === "lead" ? "selected" : ""}>Lead</option>
+
+        <option value="negociacao" ${cliente.status === "negociacao" ? "selected" : ""}>Negociação</option>
+
+        <option value="fechado" ${cliente.status === "fechado" ? "selected" : ""}>Fechado</option>
+
+        <option value="perdido" ${cliente.status === "perdido" ? "selected" : ""}>Perdido</option>
+      </select>
+
+      <label class="checkbox">
+        <input 
+          type="checkbox" 
+          id="edit-public-${cliente.id}"
+          ${cliente.is_public ? "checked" : ""}
+        >
+
+        Cliente público
+      </label>
+
+      <button onclick="salvarEdicao(${cliente.id})">
+        Salvar alterações
+      </button>
+
+    </div>
+  `;
+}
+
+async function salvarEdicao(id) {
+  const token = localStorage.getItem("token");
+
+  const clienteAtualizado = {
+    name: document.getElementById(`edit-name-${id}`).value,
+    email: document.getElementById(`edit-email-${id}`).value,
+    phone: document.getElementById(`edit-phone-${id}`).value,
+    company: document.getElementById(`edit-company-${id}`).value,
+    status: document.getElementById(`edit-status-${id}`).value,
+    is_public: document.getElementById(`edit-public-${id}`).checked
+  };
+
+  try {
+
+    const response = await fetch(`${API_URL}/customers/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(clienteAtualizado)
+    });
+
+    const data = await response.json();
+
+    console.log(data);
+
+      if (!response.ok) {
+      alert(data.message || "Erro ao atualizar cliente.");
+      console.log(data);
+      return;
+}
+
+    alert("Cliente atualizado com sucesso!");
+
+    carregarClientes();
+
+  } catch (error) {
+    console.error(error);
+    alert("Erro ao conectar com servidor.");
+  }
+}
+
+function configurarBuscaClientes() {
+  const searchInput = document.getElementById("searchInput");
+
+  if (!searchInput) return;
+
+  searchInput.oninput = () => {
+    const termo = searchInput.value.toLowerCase();
+
+    const filtrados = clientesCache.filter(cliente =>
+      (cliente.name || "").toLowerCase().includes(termo) ||
+      (cliente.email || "").toLowerCase().includes(termo) ||
+      (cliente.company || "").toLowerCase().includes(termo)
+    );
+
+    renderizarClientes(filtrados);
+  };
+}
+function filtrarPorStatus(status) {
+  const botoes = document.querySelectorAll(".filter-btn");
+
+  botoes.forEach(botao => botao.classList.remove("active"));
+
+  event.target.classList.add("active");
+
+  if (status === "todos") {
+    renderizarClientes(clientesCache);
+    return;
+  }
+
+  const filtrados = clientesCache.filter(cliente => cliente.status === status);
+
+  renderizarClientes(filtrados);
+}
+
+async function carregarDashboardInteligente() {
+  const token = localStorage.getItem("token");
+
+  try {
+
+    const response = await fetch(`${API_URL}/customers`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const clientes = await response.json();
+
+    // Últimos clientes
+    const ultimosClientes = [...clientes]
+      .slice(0, 5);
+
+    const ultimosClientesEl =
+      document.getElementById("ultimosClientes");
+
+    if (ultimosClientesEl) {
+
+      ultimosClientesEl.innerHTML =
+        ultimosClientes.map(cliente => `
+          <div class="dashboard-item">
+            <strong>${cliente.name}</strong>
+
+            <span>
+              ${cliente.company || "Sem empresa"}
+            </span>
+
+            <span>
+              ${cliente.status}
+            </span>
+          </div>
+        `).join("");
+    }
+
+    // Últimas interações
+    const interacoesEl =
+      document.getElementById("ultimasInteracoes");
+
+    if (interacoesEl) {
+
+      let interacoesHTML = "";
+
+      for (const cliente of clientes.slice(0, 5)) {
+
+        const responseInteracao =
+          await fetch(
+            `${API_URL}/customers/${cliente.id}/interactions`,
+            {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            }
+          );
+
+        const interacoes =
+          await responseInteracao.json();
+
+        if (interacoes.length > 0) {
+
+          const ultima = interacoes[0];
+
+          interacoesHTML += `
+            <div class="dashboard-item">
+
+              <strong>${cliente.name}</strong>
+
+              <span>
+                ${ultima.note}
+              </span>
+
+              <span>
+                ${formatarData(ultima.created_at)}
+              </span>
+
+            </div>
+          `;
+        }
+      }
+      const clientesSemContatoEl = document.getElementById("clientesSemContato");
+
+if (clientesSemContatoEl) {
+  const hoje = new Date();
+
+  const clientesSemContato = clientes.filter(cliente => {
+    if (!cliente.last_contact_date) return true;
+
+    const ultimaData = new Date(cliente.last_contact_date.replace(" ", "T") + "Z");
+    const diferencaDias = Math.floor((hoje - ultimaData) / (1000 * 60 * 60 * 24));
+
+    return diferencaDias >= 7;
+  });
+
+  clientesSemContatoEl.innerHTML = clientesSemContato.length
+    ? clientesSemContato.map(cliente => `
+      <div class="dashboard-item alerta-contato">
+        <strong>${cliente.name}</strong>
+        <span>
+          ${
+            cliente.last_contact_date
+              ? `Último contato: ${formatarData(cliente.last_contact_date)}`
+              : "Nunca teve contato registrado"
+          }
+        </span>
+      </div>
+    `).join("")
+    : "<p>Todos os clientes tiveram contato recente.</p>";
+}
+
+      interacoesEl.innerHTML =
+        interacoesHTML || "<p>Nenhuma interação recente.</p>";
+    }
+
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function carregarPipeline() {
+
+  const token = localStorage.getItem("token");
+
+  try {
+
+    const response = await fetch(`${API_URL}/customers`, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    const clientes = await response.json();
+
+    renderizarColunaPipeline("lead", clientes);
+    renderizarColunaPipeline("negociacao", clientes);
+    renderizarColunaPipeline("fechado", clientes);
+    renderizarColunaPipeline("perdido", clientes);
+
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function renderizarColunaPipeline(status, clientes) {
+
+  const coluna =
+    document.getElementById(`pipeline-${status}`);
+
+  if (!coluna) return;
+
+  const filtrados =
+    clientes.filter(cliente => cliente.status === status);
+
+  coluna.innerHTML = filtrados.map(cliente => `
+
+        <div 
+          class="pipeline-card"
+          draggable="true"
+          ondragstart="arrastarCliente(event, ${cliente.id})"
+        >
+
+      <strong>${cliente.name}</strong>
+
+      <span>
+        ${cliente.company || "Sem empresa"}
+      </span>
+
+      <span>
+        ${cliente.email || "Sem email"}
+      </span>
+
+      <span>
+        ${
+          cliente.last_contact_date
+            ? `Último contato: ${formatarData(cliente.last_contact_date)}`
+            : "Sem contato"
+        }
+      </span>
+
+    </div>
+
+  `).join("");
+
+}
+
+if (window.location.pathname.includes("pipeline.html")) {
+  protegerDashboard();
+  carregarPipeline();
+}
+
+function arrastarCliente(event, clienteId) {
+  event.dataTransfer.setData("clienteId", clienteId);
+}
+
+function permitirDrop(event) {
+  event.preventDefault();
+}
+
+async function soltarCliente(event, novoStatus) {
+
+  event.preventDefault();
+
+  const clienteId =
+    event.dataTransfer.getData("clienteId");
+
+  const token = localStorage.getItem("token");
+
+  try {
+
+    // busca cliente atual
+    const responseClientes =
+      await fetch(`${API_URL}/customers`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+    const clientes = await responseClientes.json();
+
+    const cliente =
+      clientes.find(c => c.id == clienteId);
+
+    if (!cliente) return;
+
+    // atualiza status
+    const response =
+      await fetch(`${API_URL}/customers/${clienteId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: cliente.name,
+          email: cliente.email,
+          phone: cliente.phone,
+          company: cliente.company,
+          status: novoStatus,
+          is_public: cliente.is_public
+        })
+      });
+
+    if (!response.ok) {
+      alert("Erro ao mover cliente.");
+      return;
+    }
+
+    carregarPipeline();
+
+  } catch (error) {
+    console.error(error);
+  }
 }

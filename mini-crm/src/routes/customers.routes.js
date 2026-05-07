@@ -54,15 +54,38 @@ router.get('/', authMiddleware, (req, res) => {
 
   db.all(
     `
-    SELECT * FROM customers
-    WHERE user_id = ?
-    OR is_public = 1
-    ORDER BY created_at DESC
+    SELECT 
+      customers.*,
+      last_interaction.created_at AS last_contact_date,
+      users.name AS last_contact_user
+    FROM customers
+
+    LEFT JOIN (
+      SELECT 
+        customer_id,
+        user_id,
+        MAX(created_at) AS created_at
+      FROM interactions
+      GROUP BY customer_id
+    ) AS last_interaction
+    ON last_interaction.customer_id = customers.id
+
+    LEFT JOIN users
+    ON users.id = last_interaction.user_id
+
+    WHERE customers.user_id = ?
+    OR customers.is_public = 1
+
+    ORDER BY customers.created_at DESC
     `,
     [userId],
     (error, rows) => {
+
       if (error) {
-        return res.status(500).json({ message: 'Erro ao buscar clientes.' });
+        return res.status(500).json({
+          message: 'Erro ao buscar clientes.',
+          error: error.message
+        });
       }
 
       res.json(rows);
@@ -70,38 +93,6 @@ router.get('/', authMiddleware, (req, res) => {
   );
 });
 
-module.exports = router;
-
-router.put('/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, email, phone, company, notes } = req.body;
-
-  db.run(
-    `UPDATE customers 
-     SET name = ?, email = ?, phone = ?, company = ?, notes = ?
-     WHERE id = ?`,
-    [name, email, phone, company, notes, id],
-    function (error) {
-      if (error) {
-        return res.status(500).json({ message: 'Erro ao atualizar cliente.' });
-      }
-
-      return res.json({ message: 'Cliente atualizado com sucesso' });
-    }
-  );
-});
-
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
-
-  db.run('DELETE FROM customers WHERE id = ?', [id], function (error) {
-    if (error) {
-      return res.status(500).json({ message: 'Erro ao deletar cliente.' });
-    }
-
-    return res.json({ message: 'Cliente deletado com sucesso' });
-  });
-});
 
 router.post('/:id/interactions', authMiddleware, (req, res) => {
   const customerId = req.params.id;
@@ -173,50 +164,83 @@ router.put('/:id', authMiddleware, (req, res) => {
     is_public
   } = req.body;
 
-  db.run(
-    `
-    UPDATE customers
-    SET 
-      name = ?,
-      email = ?,
-      phone = ?,
-      company = ?,
-      status = ?,
-      is_public = ?
-    WHERE id = ?
-    AND user_id = ?
-    `,
-    [
-      name,
-      email || '',
-      phone || '',
-      company || '',
-      status || 'lead',
-      is_public ? 1 : 0,
-      customerId,
-      userId
-    ],
-    function (error) {
-      if (error) {
-        return res.status(500).json({
-          message: 'Erro ao atualizar cliente.',
-          error: error.message
+  // Primeiro busca o cliente
+  db.get(
+    `SELECT * FROM customers WHERE id = ?`,
+    [customerId],
+    (error, customer) => {
+
+      if (error || !customer) {
+        return res.status(404).json({
+          message: 'Cliente não encontrado.'
         });
       }
 
-      if (this.changes === 0) {
+      // Regra:
+      // privado -> só dono
+      // público -> equipe pode editar
+
+      if (
+        customer.is_public !== 1 &&
+        customer.user_id !== userId
+      ) {
         return res.status(403).json({
           message: 'Você não tem permissão para editar este cliente.'
         });
       }
 
-      res.json({
-        message: 'Cliente atualizado com sucesso.'
-      });
+      db.run(
+        `
+        UPDATE customers
+        SET
+          name = ?,
+          email = ?,
+          phone = ?,
+          company = ?,
+          status = ?,
+          is_public = ?
+        WHERE id = ?
+        `,
+        [
+          name,
+          email || '',
+          phone || '',
+          company || '',
+          status || 'lead',
+          is_public ? 1 : 0,
+          customerId
+        ],
+        function (error) {
+
+          if (error) {
+            return res.status(500).json({
+              message: 'Erro ao atualizar cliente.',
+              error: error.message
+            });
+          }
+
+          // salva histórico automático
+          db.run(
+            `
+            INSERT INTO interactions
+            (customer_id, user_id, note)
+            VALUES (?, ?, ?)
+            `,
+            [
+              customerId,
+              userId,
+              `Cliente atualizado (${status})`
+            ]
+          );
+
+          res.json({
+            message: 'Cliente atualizado com sucesso.'
+          });
+        }
+      );
     }
   );
 });
-
 router.delete('/:id', authMiddleware, (req, res) => {
   const customerId = req.params.id;
   const userId = req.userId;
@@ -249,3 +273,4 @@ router.delete('/:id', authMiddleware, (req, res) => {
   );
 });
 
+module.exports = router;

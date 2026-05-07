@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Pipeline Comercial</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <aside class="sidebar">
+
+    <h2>Eato CRM</h2>
+
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="pipeline.html" class="active">Pipeline</a>
+    </nav>
+
+    <button onclick="logout()">Sair</button>
+
+  </aside>
+
+  <main class="main-content">
+
+    <h1>Pipeline Comercial</h1>
+
+    <section class="pipeline-board">
+
+      <!-- LEADS -->
+      <div 
+        class="pipeline-column"
+        ondragover="permitirDrop(event)"
+        ondrop="soltarCliente(event, 'lead')"
+      >
+
+        <h3>Leads</h3>
+
+        <div id="pipeline-lead"></div>
+
+      </div>
+
+      <!-- NEGOCIAÇÃO -->
+      <div 
+        class="pipeline-column"
+        ondragover="permitirDrop(event)"
+        ondrop="soltarCliente(event, 'negociacao')"
+      >
+
+        <h3>Negociação</h3>
+
+        <div id="pipeline-negociacao"></div>
+
+      </div>
+
+      <!-- FECHADOS -->
+      <div 
+        class="pipeline-column"
+        ondragover="permitirDrop(event)"
+        ondrop="soltarCliente(event, 'fechado')"
+      >
+
+        <h3>Fechados</h3>
+
+        <div id="pipeline-fechado"></div>
+
+      </div>
+
+      <!-- PERDIDOS -->
+      <div 
+        class="pipeline-column"
+        ondragover="permitirDrop(event)"
+        ondrop="soltarCliente(event, 'perdido')"
+      >
+
+        <h3>Perdidos</h3>
+
+        <div id="pipeline-perdido"></div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+
+</body>
+</html>

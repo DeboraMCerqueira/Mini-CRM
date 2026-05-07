@@ -16,6 +16,7 @@
         <a onclick="irDashboard()">Dashboard</a>
         <a class="active" onclick="window.location.href='clientes.html'">Clientes</a>
         <a onclick="window.location.href='relatorios.html'">Relatórios</a>
+        <a href="pipeline.html">Pipeline</a>
       </nav>
 
       <button onclick="logout()" class="logout-btn">Sair</button>
@@ -24,6 +25,21 @@
     <main class="main-content">
       <h1>Clientes</h1>
       <p>Gerencie seus clientes</p>
+
+      <div class="search-area">
+        <input 
+          type="text" 
+          id="searchInput" 
+          placeholder="Buscar por nome, email ou empresa..."
+        >
+      </div>
+      <div class="filter-area">
+        <button onclick="filtrarPorStatus('todos')" class="filter-btn active">Todos</button>
+        <button onclick="filtrarPorStatus('lead')" class="filter-btn">Leads</button>
+        <button onclick="filtrarPorStatus('negociacao')" class="filter-btn">Negociação</button>
+        <button onclick="filtrarPorStatus('fechado')" class="filter-btn">Fechados</button>
+        <button onclick="filtrarPorStatus('perdido')" class="filter-btn">Perdidos</button>
+      </div>
 
       <div class="table-card">
         <h2>Lista de Clientes</h2>
