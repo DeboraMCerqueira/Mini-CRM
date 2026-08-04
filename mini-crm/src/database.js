@@ -51,8 +51,15 @@ async function criarTabelas() {
   }
 }
 
-criarTabelas();
+async function inicializarBanco() {
+  try {
+    await criarTabelas();
+    console.log('Banco de dados conectado e tabelas criadas com sucesso.');
+  } catch (error) {
+    console.error('Erro ao inicializar o banco:', error);
+  }
+}
 
-console.log('Banco de dados conectado com sucesso.');
+inicializarBanco();
 
 module.exports = db;
